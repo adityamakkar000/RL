@@ -84,13 +84,14 @@ print(values.shape)
 
 
 policy_stable = False
-
+count = 0
 while policy_stable == False:
 
   policy_stable = True
 
+  # policy iteration
   while grad > theta :
-
+    count += 1
     grad = 0
 
     for i in range(grid_squares):
@@ -101,7 +102,8 @@ while policy_stable == False:
 
         grad = max(grad, abs(v - values[i,k]))
 
-
+  grad = 1000
+  # policy evaulation
   for i in range(grid_squares):
     for k in range(grid_squares):
 
@@ -114,6 +116,7 @@ while policy_stable == False:
       if(policy[4*i + k] != current_policy):
         policy_stable = False
 
+print(count)
 print(values)
 coversion = {
 1000: 'u',
