@@ -59,32 +59,52 @@ def get_reward(state):
 # while policy_stable == False:
 #  grad = 1000
 
-grad = 1000
 
 steps = 0
 max_steps = 1000
+while policy_stable == False:
 
-while grad > theta and steps < max_steps:
-  grad = 0
-  values_temp = np.copy(values)
-  for i in range(num_squares):
-    for k in range(num_squares):
+  grad = 1000
+  while grad > theta:
+    grad = 0
+    values_temp = np.copy(values)
+    for i in range(num_squares):
+      for k in range(num_squares):
 
-      state = (i,k)
+        state = (i,k)
 
-      v = values[i,k]
-      values[i,k] = 0
+        v = values[i,k]
+        values[i,k] = 0
 
-      for _, a in enumerate(policy[i,k]):
-        s_prime = get_s_prime(_, state)
-        reward = get_reward(state)
+        for _, a in enumerate(policy[i,k]):
+          s_prime = get_s_prime(_, state)
+          reward = get_reward(state)
 
-        values[i,k] += a * 1 * (reward + gamma * values_temp[s_prime[0], s_prime[1]])
+          values[i,k] += a * 1 * (reward + gamma * values_temp[s_prime[0], s_prime[1]])
 
-      grad = max(grad, abs(v - values[i,k]))
-  steps +=  1
-  print(grad)
+        grad = max(grad, abs(v - values[i,k]))
+    steps +=  1
 
-  #TODO add policy iteration
+    policy_stable = True
+    for i in range(num_squares):
+      for k in range(num_squares):
+
+        q_star = np.zeros((4,))
+        state = (i,k)
+
+        for _, a in enumerate(policy[i,k]):
+          value = 0
+          s_prime = get_s_prime(_, state)
+          reward = get_reward(state)
+
+          value = 1 * 1 * (reward + gamma * values[s_prime[0], s_prime[1]])
+
+          q_star[_] = value
+
+        policy_new = np.array([1 if i == np.argmax(q_star) else 0 for i in range(4)])
+        if not np.array_equal(policy_new, policy[i,k]):
+          policy[i,k] = policy_new
+          policy_stable = False
+
 
 print(values)
