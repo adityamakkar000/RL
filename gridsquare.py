@@ -85,4 +85,6 @@ while grad > theta and steps < max_steps:
   steps +=  1
   print(grad)
 
+  #TODO add policy iteration
+
 print(values)
