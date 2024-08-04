@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+# Monte Carlo ES (Exploring Starts), for estimating optimal policy on blackjack
+
 
 class blackjack:
     def __init__(self) -> None:
@@ -45,15 +47,26 @@ class blackjack:
             self.cards, number, [self.card_probs[card] for card in self.cards]
         ).tolist()
 
-    def players_turn(self, cards, dealers_showing):
+    def players_turn(self, cards, dealers_showing, policy):
         episode = []
+        actions = []
         psum, usableAce = self.sum(cards)
         episode.append((psum, usableAce, dealers_showing))
-        while psum < 20:
-            cards.append(self.draw(1)[0])
-            psum, usableAce = self.sum(cards)
-            episode.append((psum, usableAce, dealers_showing))
-        return episode, psum
+        while psum <= 21:
+            action = np.argmax(
+                policy[psum - 12, 1 if usableAce else 0, dealers_showing - 2]
+            )
+            if action == 0:
+                actions.append(action)
+                break
+            else:
+                actions.append(action)
+                cards.append(self.draw(1)[0])
+                psum, usableAce = self.sum(cards)
+                if psum > 21:
+                    break
+                episode.append((psum, usableAce, dealers_showing))
+        return episode, actions, psum
 
     def dealers_turn(self, cards):
         psum, usableAce = self.sum(cards)
@@ -62,13 +75,15 @@ class blackjack:
             psum, usableAce = self.sum(cards)
         return psum
 
-    def simulate_game(self):
+    def simulate_game(self, policy):
         players_cards = self.draw(2)
         dealers_cards = self.draw(2)
 
         dealers_showing, dealerace = self.sum([dealers_cards[0]])
 
-        episode, players_sum = self.players_turn(players_cards, dealers_showing)
+        episode, actions, players_sum = self.players_turn(
+            players_cards, dealers_showing, policy
+        )
         dealers_sum = self.dealers_turn(dealers_cards)
 
         if players_sum > 21 or dealers_sum > players_sum:
@@ -77,65 +92,17 @@ class blackjack:
             reward = 1
         elif dealers_sum == players_sum:
             reward = 0
-        game_info = {'episode': episode, 'dealers_sum': dealers_sum, 'reward': reward}
+        game_info = {
+            'episode': episode,
+            'actions': actions,
+            'dealers_sum': dealers_sum,
+            'reward': reward
+        }
 
         return game_info
 
-    def __call__(self):
-        return self.simulate_game()
-
-
-value = np.array(
-    [
-        [[np.random.rand() for j in range(12, 22)] for k in range(2)]
-        for i in range(2, 12)
-    ]
-)
-
-returns = [[[[] for j in range(12, 22)] for k in range(2)] for i in range(2, 12)]
-
-game = blackjack()
-gamma = 0.9
-
-
-def average(arr):
-    s = 0
-    for i in arr:
-        s += i
-    return s / len(arr)
-
-
-games = 0
-total_games = 490000
-
-while games < total_games:
-    info = game()
-    episode = info['episode']
-    g = info['reward']
-
-    for t in range(len(episode) - 1, -1, -1):
-        g = gamma * g
-        current_episode = episode[t]
-        if current_episode in episode[: t - 1]:
-            if current_episode[0] >= 12 and current_episode[0] <= 21:
-                returns[current_episode[0] - 12][
-                    1 if current_episode[1] == True else 0
-                ][current_episode[2] - 2].append(g)
-                value[
-                    current_episode[0] - 12,
-                    1 if current_episode[1] == True else 0,
-                    current_episode[2] - 2
-                ] = average(
-                    returns[current_episode[0] - 12][
-                        1 if current_episode[1] == True else 0
-                    ][current_episode[2] - 2]
-                )
-    games += 1
-
-    if games % 10000 == 0:
-        print('completed ', games, ' games')
-usable_ace_values = value[:, 1, :]
-no_ace_values = value[:, 0, :]
+    def __call__(self, policy):
+        return self.simulate_game(policy)
 
 
 def plot_value_function(value_function, title):
@@ -154,6 +121,58 @@ def plot_value_function(value_function, title):
 
     plt.show()
 
+
+def average(arr):
+    return np.mean(arr)
+
+
+value = np.zeros((10, 2, 10))
+
+Q = np.zeros((10, 2, 10, 2))
+
+returns = [
+    [[[[] for p in range(2)] for j in range(10)] for k in range(2)] for i in range(10)
+]
+
+policy = np.ones((10, 2, 10, 2)) * 0.5
+
+game = blackjack()
+gamma = 1
+
+games = 0
+total_games = 10000000
+
+while games < total_games:
+    info = game(policy)
+    episode = info['episode']
+    actions = info['actions']
+    g = info['reward']
+
+    for t in range(len(episode) - 1, -1, -1):
+        g = gamma * g
+        current_episode = episode[t]
+        current_action = actions[t]
+        # if current_episode in episode[: t - 1] and current_action in episode[: t - 1]:
+        #     print('hi')
+        if current_episode[0] >= 12 and current_episode[0] <= 21:
+            idx0, idx1, idx2 = (
+                current_episode[0] - 12,
+                1 if current_episode[1] == True else 0,
+                current_episode[2] - 2
+            )
+
+            returns[idx0][idx1][idx2][current_action].append(g)
+            Q[idx0, idx1, idx2, current_action] = average(
+                returns[idx0][idx1][idx2][current_action]
+            )
+            index = np.argmax(Q[idx0, idx1, idx2])
+            policy[idx0, idx1, idx2] = np.eye(2)[index]
+            value[idx0, idx1, idx2] = np.max(Q[idx0, idx1, idx2])
+    games += 1
+    if games % 10000 == 0:
+        print('completed ', games, ' games')
+usable_ace_values = value[:, 1, :]
+no_ace_values = value[:, 0, :]
 
 plot_value_function(usable_ace_values, 'usableAce')
 plot_value_function(no_ace_values, 'nousableAce')
