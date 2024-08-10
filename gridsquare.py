@@ -83,23 +83,23 @@ while policy_stable == False:
         steps += 1
 
         policy_stable = True
-        # for i in range(num_squares):
-        #   for k in range(num_squares):
+        for i in range(num_squares):
+          for k in range(num_squares):
 
-        #     q_star = np.zeros((4,))
-        #     state = (i,k)
+            q_star = np.zeros((4,))
+            state = (i,k)
 
-        #     for _, a in enumerate(policy[i,k]):
-        #       value = 0
-        #       s_prime = get_s_prime(_, state)
-        #       reward = get_reward(state)
+            for _, a in enumerate(policy[i,k]):
+              value = 0
+              s_prime = get_s_prime(_, state)
+              reward = get_reward(state)
 
-        #       value = 1 * 1 * (reward + gamma * values[s_prime[0], s_prime[1]])
+              value = 1 * 1 * (reward + gamma * values[s_prime[0], s_prime[1]])
 
-        #       q_star[_] = value
+              q_star[_] = value
 
-        #     policy_new = np.array([1 if i == np.argmax(q_star) else 0 for i in range(4)])
-        #     if not np.array_equal(policy_new, policy[i,k]):
-        #       policy[i,k] = policy_new
-        #       policy_stable = False
+            policy_new = np.array([1 if i == np.argmax(q_star) else 0 for i in range(4)])
+            if not np.array_equal(policy_new, policy[i,k]):
+              policy[i,k] = policy_new
+              policy_stable = False
 print(values)
